@@ -22,7 +22,9 @@ struct MeoAsstMacApp: App {
         let newModel = NewViewModel(parent: viewModel)
         _appViewModel = StateObject(wrappedValue: viewModel)
         _newViewModel = State(wrappedValue: newModel)
-        #if DEBUG
+        #if BLACKFLOW_DATA_COLLECTION
+        let isRelease = false
+        #elseif DEBUG
         let isRelease = false
         #else
         let isRelease = true

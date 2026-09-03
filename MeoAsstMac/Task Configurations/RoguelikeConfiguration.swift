@@ -33,6 +33,10 @@ struct RoguelikeConfiguration: MAATaskConfiguration {
         ///
         /// 黑流树海主题专用模式
         case babyAnimal = 30001
+        /// 对局数据自动化收集
+        ///
+        /// 黑流树海主题专用模式
+        case automationCollection = 30002
     }
 
     enum Theme: String, CaseIterable, Codable {
@@ -68,6 +72,7 @@ struct RoguelikeConfiguration: MAATaskConfiguration {
 
     enum BlackflowStrategy: String, Codable, CaseIterable {
         case babyAnimal = "baby_animal"
+        case automationCollection = "automation_collection"
     }
 
     enum BlackflowCultivation: String, Codable, CaseIterable {
@@ -99,6 +104,10 @@ struct RoguelikeConfiguration: MAATaskConfiguration {
             check_collapsal_paradigms = mode == .clpPds
             if mode == .investment { investment_enabled = true }
             if theme == .BlackFlow { investment_with_more_score = false }
+            if mode == .automationCollection {
+                difficulty = .init(id: 6)
+                investment_enabled = false
+            }
         }
     }
     var squad: String
@@ -285,7 +294,7 @@ extension RoguelikeConfiguration.Theme {
         case .JieGarden:
             return commonModes + [.findPlaytime]
         case .BlackFlow:
-            return [.exp, .investment, .babyAnimal]
+            return [.exp, .investment, .babyAnimal, .automationCollection]
         default:
             return commonModes
         }
@@ -311,6 +320,8 @@ extension RoguelikeConfiguration.Mode {
             String(localized: "刷常乐节点")
         case .babyAnimal:
             String(localized: "刷襁褓动物")
+        case .automationCollection:
+            String(localized: "对局数据自动化收集")
         }
     }
 }
@@ -425,8 +436,15 @@ extension RoguelikeConfiguration {
     }
 
     fileprivate var checkedBlackflowStrategy: String? {
-        guard theme == .BlackFlow, mode == .babyAnimal else { return nil }
-        return BlackflowStrategy.babyAnimal.rawValue
+        guard theme == .BlackFlow else { return nil }
+        switch mode {
+        case .babyAnimal:
+            return BlackflowStrategy.babyAnimal.rawValue
+        case .automationCollection:
+            return BlackflowStrategy.automationCollection.rawValue
+        default:
+            return nil
+        }
     }
 }
 
@@ -440,10 +458,12 @@ extension RoguelikeConfiguration.Params {
         self.use_support = config.use_support
         self.use_nonfriend_support = config.use_support ? config.use_nonfriend_support : nil
         self.starts_count = config.starts_count
-        self.difficulty = config.difficulty.id
+        self.difficulty = config.mode == .automationCollection ? 6 : config.difficulty.id
         self.stop_at_final_boss = config.mode == .exp && config.theme != .Phantom ? config.stop_at_final_boss : nil
         self.stop_at_max_level = config.mode == .exp ? config.stop_at_max_level : nil
-        self.investment_enabled = config.mode == .investment || config.investment_enabled
+        self.investment_enabled = config.mode == .automationCollection
+            ? false
+            : config.mode == .investment || config.investment_enabled
         self.investments_count = config.mode == .investment ? config.investments_count : nil
         self.stop_when_investment_full = config.mode == .investment ? config.stop_when_investment_full : nil
         self.investment_with_more_score =
@@ -473,18 +493,32 @@ extension RoguelikeConfiguration.Params {
 extension RoguelikeConfiguration {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        #if BLACKFLOW_DATA_COLLECTION
+        self.theme = try container.decodeIfPresent(Theme.self, forKey: .theme) ?? .BlackFlow
+        self.mode = try container.decodeIfPresent(Mode.self, forKey: .mode) ?? .automationCollection
+        #else
         self.theme = try container.decodeIfPresent(Theme.self, forKey: .theme) ?? .Phantom
         self.mode = try container.decodeIfPresent(Mode.self, forKey: .mode) ?? .exp
+        #endif
         self.squad = try container.decodeIfPresent(String.self, forKey: .squad) ?? "指挥分队"
         self.roles = try container.decodeIfPresent(String.self, forKey: .roles) ?? "取长补短"
         self.core_char = try container.decodeIfPresent(String.self, forKey: .core_char) ?? ""
         self.use_support = try container.decodeIfPresent(Bool.self, forKey: .use_support) ?? false
         self.use_nonfriend_support = try container.decodeIfPresent(Bool.self, forKey: .use_nonfriend_support) ?? false
         self.starts_count = try container.decodeIfPresent(Int.self, forKey: .starts_count) ?? 9_999_999
+        #if BLACKFLOW_DATA_COLLECTION
+        self.difficulty = try container.decodeIfPresent(Difficulty.self, forKey: .difficulty) ?? .init(id: 6)
+        #else
         self.difficulty = try container.decodeIfPresent(Difficulty.self, forKey: .difficulty) ?? .max
+        #endif
         self.stop_at_final_boss = try container.decodeIfPresent(Bool.self, forKey: .stop_at_final_boss) ?? false
         self.stop_at_max_level = try container.decodeIfPresent(Bool.self, forKey: .stop_at_max_level) ?? false
+        #if BLACKFLOW_DATA_COLLECTION
+        self.investment_enabled =
+            try container.decodeIfPresent(Bool.self, forKey: .investment_enabled) ?? false
+        #else
         self.investment_enabled = try container.decodeIfPresent(Bool.self, forKey: .investment_enabled) ?? true
+        #endif
         self.investments_count = try container.decodeIfPresent(Int.self, forKey: .investments_count) ?? 999
         self.stop_when_investment_full =
             try container.decodeIfPresent(Bool.self, forKey: .stop_when_investment_full) ?? false

@@ -40,6 +40,7 @@ struct RoguelikeSettingsView: View {
                 Text($0.description).tag($0)
             }
         }
+        .disabled(config.mode == .automationCollection)
 
         TextField("最多探索次数", value: $config.starts_count, format: .number)
     }
@@ -47,7 +48,7 @@ struct RoguelikeSettingsView: View {
     @ViewBuilder private func goldSettings() -> some View {
         HStack {
             Toggle("投资源石锭", isOn: $config.investment_enabled)
-                .disabled(config.mode == .investment)
+                .disabled(config.mode == .investment || config.mode == .automationCollection)
             if config.mode == .investment {
                 Toggle("储备源石锭达到上限时停止", isOn: $config.stop_when_investment_full)
             }
@@ -220,6 +221,8 @@ extension RoguelikeConfiguration.Mode {
             String(localized: "刷等级，快速飞三层")
         case (.investment, .BlackFlow):
             String(localized: "刷源石锭，投资完成后自动退出")
+        case (.automationCollection, _):
+            String(localized: "对局数据自动化收集")
         case (.exp, _):
             String(localized: "刷等级，尽可能稳定地打更多层数")
         case (.investment, _):
