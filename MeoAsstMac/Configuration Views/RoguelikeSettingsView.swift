@@ -10,6 +10,9 @@ import SwiftUI
 struct RoguelikeSettingsView: View {
     @Binding var config: RoguelikeConfiguration
 
+    @State private var difficultyUnlockClicks = 0
+    @State private var lastDifficultyUnlockClick: TimeInterval = 0
+
     @Environment(\.defaultMinListRowHeight) private var rowHeight
 
     var body: some View {
@@ -40,7 +43,25 @@ struct RoguelikeSettingsView: View {
                 Text($0.description).tag($0)
             }
         }
-        .disabled(config.mode == .automationCollection)
+        .disabled(config.automationCollectionDifficultyLocked)
+        .overlay {
+            if config.automationCollectionDifficultyLocked {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        let now = ProcessInfo.processInfo.systemUptime
+                        difficultyUnlockClicks = now - lastDifficultyUnlockClick <= 1
+                            ? difficultyUnlockClicks + 1 : 1
+                        lastDifficultyUnlockClick = now
+                        if difficultyUnlockClicks == 5 {
+                            config.automationCollectionDifficultyUnlocked = true
+                            difficultyUnlockClicks = 0
+                        }
+                    }
+                    .onHover { if !$0 { difficultyUnlockClicks = 0 } }
+                    .onDisappear { difficultyUnlockClicks = 0 }
+            }
+        }
 
         TextField("最多探索次数", value: $config.starts_count, format: .number)
     }

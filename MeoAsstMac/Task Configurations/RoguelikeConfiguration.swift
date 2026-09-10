@@ -105,7 +105,7 @@ struct RoguelikeConfiguration: MAATaskConfiguration {
             if mode == .investment { investment_enabled = true }
             if theme == .BlackFlow { investment_with_more_score = false }
             if mode == .automationCollection {
-                difficulty = .init(id: 6)
+                if !automationCollectionDifficultyUnlocked { difficulty = .init(id: 6) }
                 investment_enabled = false
             }
         }
@@ -122,6 +122,12 @@ struct RoguelikeConfiguration: MAATaskConfiguration {
     var starts_count: Int
     /// 指定难度等级，可选，默认值 `0`
     var difficulty: Difficulty
+
+    var automationCollectionDifficultyUnlocked = false
+
+    var automationCollectionDifficultyLocked: Bool {
+        theme == .BlackFlow && mode == .automationCollection && !automationCollectionDifficultyUnlocked
+    }
     /// 是否在第 5 层险路恶敌节点前停止任务，可选，默认值 `false`
     ///
     /// 仅适用于**除 `Phantom` 以外**的主题
@@ -458,7 +464,7 @@ extension RoguelikeConfiguration.Params {
         self.use_support = config.use_support
         self.use_nonfriend_support = config.use_support ? config.use_nonfriend_support : nil
         self.starts_count = config.starts_count
-        self.difficulty = config.mode == .automationCollection ? 6 : config.difficulty.id
+        self.difficulty = config.automationCollectionDifficultyLocked ? 6 : config.difficulty.id
         self.stop_at_final_boss = config.mode == .exp && config.theme != .Phantom ? config.stop_at_final_boss : nil
         self.stop_at_max_level = config.mode == .exp ? config.stop_at_max_level : nil
         self.investment_enabled = config.mode == .automationCollection
@@ -506,6 +512,8 @@ extension RoguelikeConfiguration {
         self.use_support = try container.decodeIfPresent(Bool.self, forKey: .use_support) ?? false
         self.use_nonfriend_support = try container.decodeIfPresent(Bool.self, forKey: .use_nonfriend_support) ?? false
         self.starts_count = try container.decodeIfPresent(Int.self, forKey: .starts_count) ?? 9_999_999
+        self.automationCollectionDifficultyUnlocked =
+            try container.decodeIfPresent(Bool.self, forKey: .automationCollectionDifficultyUnlocked) ?? false
         #if BLACKFLOW_DATA_COLLECTION
         self.difficulty = try container.decodeIfPresent(Difficulty.self, forKey: .difficulty) ?? .init(id: 6)
         #else
@@ -556,5 +564,6 @@ extension RoguelikeConfiguration {
         self.blackflowCultivationTarget =
             try container.decodeIfPresent(BlackflowCultivation.self, forKey: .blackflowCultivationTarget)
             ?? .swaddledCat
+        if automationCollectionDifficultyLocked { difficulty = .init(id: 6) }
     }
 }
