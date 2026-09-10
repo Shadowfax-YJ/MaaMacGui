@@ -60,11 +60,15 @@ extension MAAResourceChannel {
     }
 
     public func latestURL() async throws -> URL {
+        #if BLACKFLOW_DATA_COLLECTION
+        throw Error.noNeedUpdate
+        #else
         let localVersion = try version().1.last_updated
         let (remoteVersion, url) = try await latest(currentVersion: localVersion)
         guard remoteVersion > localVersion else { throw Error.noNeedUpdate }
         guard let url else { throw Error.emptyURL }
         return url
+        #endif
     }
 
     private func latest(currentVersion: String) async throws -> (String, URL?) {

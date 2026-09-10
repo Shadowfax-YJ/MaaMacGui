@@ -22,15 +22,32 @@ struct MeoAsstMacApp: App {
         let newModel = NewViewModel(parent: viewModel)
         _appViewModel = StateObject(wrappedValue: viewModel)
         _newViewModel = State(wrappedValue: newModel)
+        updaterDelegate.viewModel = viewModel
         #if BLACKFLOW_DATA_COLLECTION
-        let isRelease = false
+        let isRelease = true
         #elseif DEBUG
         let isRelease = false
         #else
         let isRelease = true
         #endif
         updaterController = .init(startingUpdater: isRelease, updaterDelegate: updaterDelegate, userDriverDelegate: nil)
+        #if BLACKFLOW_DATA_COLLECTION
+        if !UserDefaults.standard.bool(forKey: "BlackFlowUpdateChannelInitialized") {
+            updaterController.updater.automaticallyChecksForUpdates = true
+            updaterController.updater.automaticallyDownloadsUpdates = true
+            UserDefaults.standard.set(true, forKey: "BlackFlowUpdateChannelInitialized")
+        }
+        #endif
+        let delegate = updaterDelegate
         appDelegate.beforeTermination = {
+            #if BLACKFLOW_DATA_COLLECTION
+            // Sparkle can skip the postpone callback when resuming a previous installation.
+            if delegate.installingUpdate {
+                while viewModel.status != .idle {
+                    try? await Task.sleep(for: .seconds(1))
+                }
+            }
+            #endif
             await newModel.waitLogStoreToFinish()
         }
     }
@@ -84,14 +101,50 @@ struct MeoAsstMacApp: App {
 }
 
 final class MaaUpdaterDelegate: NSObject, SPUUpdaterDelegate {
+    weak var viewModel: MAAViewModel?
     @AppStorage("MaaUseBetaChannel") private var useBetaChannel = false
 
+    #if BLACKFLOW_DATA_COLLECTION
+    var installingUpdate = false
+
+    func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) {
+        installingUpdate = true
+    }
+
+    func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+        installingUpdate = false
+    }
+
+    func feedURLString(for updater: SPUUpdater) -> String? {
+        "https://github.com/Shadowfax-YJ/MaaAssistantArknights/releases/download/blackflow-updates/appcast.xml"
+    }
+
+    func updater(
+        _ updater: SPUUpdater,
+        shouldPostponeRelaunchForUpdate item: SUAppcastItem,
+        untilInvokingBlock installHandler: @escaping () -> Void
+    ) -> Bool {
+        guard let viewModel, viewModel.status != .idle else { return false }
+        Task { @MainActor [weak viewModel] in
+            while let viewModel, viewModel.status != .idle {
+                try? await Task.sleep(for: .seconds(1))
+            }
+            installHandler()
+        }
+        return true
+    }
+    #endif
+
     func allowedChannels(for updater: SPUUpdater) -> Set<String> {
+        #if BLACKFLOW_DATA_COLLECTION
+        return Set()
+        #else
         if useBetaChannel {
             return Set(["beta"])
         } else {
             return Set()
         }
+        #endif
     }
 }
 

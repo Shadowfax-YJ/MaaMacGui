@@ -263,8 +263,12 @@ extension MAAViewModel {
 
     /// Reloads the resources from the documents directory after update.
     func reloadResources(channel: MAAClientChannel) async throws {
+        #if BLACKFLOW_DATA_COLLECTION
+        try await loadResource(url: Bundle.main.resourceURL!, channel: channel)
+        #else
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         try await loadResource(url: documentsDirectory, channel: channel)
+        #endif
     }
 
     /// Load base resources and channel-specific resources.
@@ -330,6 +334,10 @@ extension MAAViewModel {
     ///
     /// Should be the outermost call to load resources.
     private func loadResource(channel: MAAClientChannel) async throws {
+        #if BLACKFLOW_DATA_COLLECTION
+        // Collection builds only load the resource set tested with this Core.
+        try await loadResource(url: Bundle.main.resourceURL!, channel: channel)
+        #else
         let (preferUser, currentResourceVersion) = try resourceChannel.version()
         try await loadResource(url: Bundle.main.resourceURL!, channel: channel)
 
@@ -378,6 +386,7 @@ extension MAAViewModel {
                 logError("无法检查资源更新: \(error.localizedDescription)")
             }
         }
+        #endif
     }
 
     private func updateChannel(channel: MAAClientChannel) {

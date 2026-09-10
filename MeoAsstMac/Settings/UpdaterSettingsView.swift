@@ -26,7 +26,13 @@ struct UpdaterSettingsView: View {
 
     var body: some View {
         Form {
+            #if BLACKFLOW_DATA_COLLECTION
+            Text("黑流树海采集版更新")
+            Text("升级保留连接设置、任务配置和采集数据；资源随应用一起更新。")
+                .font(.caption).foregroundStyle(.secondary)
+            #else
             Toggle("接收开发版更新", isOn: $useBetaChannel)
+            #endif
 
             Toggle("自动检查更新", isOn: $automaticallyChecksForUpdates)
                 .onChange(of: automaticallyChecksForUpdates) {
@@ -39,6 +45,7 @@ struct UpdaterSettingsView: View {
                     updater.automaticallyDownloadsUpdates = $1
                 }
 
+            #if !BLACKFLOW_DATA_COLLECTION
             Divider()
 
             Picker("资源更新来源", selection: $resourceChannel) {
@@ -58,6 +65,7 @@ struct UpdaterSettingsView: View {
 
             Text("重新打开应用后生效。")
                 .font(.caption).foregroundStyle(.secondary)
+            #endif
         }
         .animation(.default, value: resourceChannel)
         .padding()
