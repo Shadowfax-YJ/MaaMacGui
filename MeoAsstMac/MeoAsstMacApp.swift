@@ -106,6 +106,8 @@ final class MaaUpdaterDelegate: NSObject, SPUUpdaterDelegate {
 
     #if BLACKFLOW_DATA_COLLECTION
     var installingUpdate = false
+    @AppStorage("BlackFlowUpdateSource") private var updateSource = "Auto"
+    private var usingFallback = false
 
     func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) {
         installingUpdate = true
@@ -116,7 +118,34 @@ final class MaaUpdaterDelegate: NSObject, SPUUpdaterDelegate {
     }
 
     func feedURLString(for updater: SPUUpdater) -> String? {
-        "https://github.com/Shadowfax-YJ/MaaAssistantArknights/releases/download/blackflow-updates/appcast.xml"
+        if updateSource == "GitHub" || (updateSource == "Auto" && usingFallback) {
+            return "https://github.com/Shadowfax-YJ/MaaAssistantArknights/releases/download/blackflow-updates/appcast.xml"
+        }
+        return "https://img.lubiao.wiki/maa/blackflow/appcast.xml"
+    }
+
+    func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
+        let failure = error as NSError?
+        let retryable = failure.map {
+            ($0.domain == NSURLErrorDomain && $0.code != NSURLErrorCancelled) ||
+            ($0.domain == SUSparkleErrorDomain && [
+                SUError.appcastError.rawValue, SUError.appcastParseError.rawValue, SUError.downloadError.rawValue,
+            ].contains(OSStatus($0.code)))
+        } ?? false
+        guard updateSource == "Auto", !usingFallback, retryable else {
+            usingFallback = false
+            return
+        }
+        usingFallback = true
+        // Start only after Sparkle finishes the failed cycle; never retry cancellation or installation errors.
+        DispatchQueue.main.async { [weak self, weak updater] in
+            guard let self, let updater else { return }
+            guard updater.canCheckForUpdates, self.updateSource == "Auto" else {
+                self.usingFallback = false
+                return
+            }
+            updater.checkForUpdatesInBackground()
+        }
     }
 
     func updater(

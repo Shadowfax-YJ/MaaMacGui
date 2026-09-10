@@ -15,6 +15,7 @@ struct UpdaterSettingsView: View {
     @State private var automaticallyDownloadsUpdates: Bool
 
     @AppStorage("MaaUseBetaChannel") private var useBetaChannel = false
+    @AppStorage("BlackFlowUpdateSource") private var blackFlowSource = "Auto"
     @AppStorage("AutoResourceUpdate") var autoResourceUpdate = false
     @AppStorage("ResourceUpdateChannel") var resourceChannel = MAAResourceChannel.github
 
@@ -30,6 +31,11 @@ struct UpdaterSettingsView: View {
             Text("黑流树海采集版更新")
             Text("升级保留连接设置、任务配置和采集数据；资源随应用一起更新。")
                 .font(.caption).foregroundStyle(.secondary)
+            Picker("下载源", selection: $blackFlowSource) {
+                Text("自动（国内 CDN 优先）").tag("Auto")
+                Text("国内 CDN").tag("CDN")
+                Text("GitHub").tag("GitHub")
+            }
             #else
             Toggle("接收开发版更新", isOn: $useBetaChannel)
             #endif
