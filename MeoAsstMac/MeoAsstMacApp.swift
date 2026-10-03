@@ -121,7 +121,7 @@ final class MaaUpdaterDelegate: NSObject, SPUUpdaterDelegate {
         if updateSource == "GitHub" || (updateSource == "Auto" && usingFallback) {
             return "https://github.com/Shadowfax-YJ/MaaAssistantArknights/releases/download/blackflow-updates/appcast.xml"
         }
-        return "https://img.lubiao.wiki/maa/blackflow/appcast.xml"
+        return "https://cdn.lubiao.wiki/maa/blackflow/appcast.xml"
     }
 
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
