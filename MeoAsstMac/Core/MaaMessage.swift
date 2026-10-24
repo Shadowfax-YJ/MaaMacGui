@@ -178,7 +178,9 @@ extension MAAViewModel {
             break
 
         case .AllTasksCompleted:
-            logTrace("AllTasksComplete")
+            if !taskStatus.values.contains(.failure) {
+                logTrace("AllTasksComplete")
+            }
             resetStatus()
 
         default:
